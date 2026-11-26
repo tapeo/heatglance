@@ -5,6 +5,11 @@ cd "$(dirname "$0")"
 WORK="$(mktemp -d)"
 DIST="dist"
 PROFILE="${HEATGLANCE_NOTARY_PROFILE:-heatglance-notary}"
+TEAM_ID="${HEATGLANCE_TEAM_ID:-}"
+if [ -z "$TEAM_ID" ]; then
+  echo "Set HEATGLANCE_TEAM_ID to your Apple team identifier."
+  exit 1
+fi
 
 cleanup() {
   rm -rf "$WORK"
@@ -25,7 +30,7 @@ xcodebuild \
   -allowProvisioningUpdates \
   archive
 
-cat > "$WORK/export.plist" <<'PLIST'
+cat > "$WORK/export.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -35,7 +40,7 @@ cat > "$WORK/export.plist" <<'PLIST'
     <key>signingStyle</key>
     <string>automatic</string>
     <key>teamID</key>
-    <string>YOUR_TEAM_ID</string>
+    <string>${TEAM_ID}</string>
 </dict>
 </plist>
 PLIST

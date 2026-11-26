@@ -109,6 +109,8 @@ This is where you see what happened while you were away.
 ./release.sh        # Developer ID build, notarized DMG into dist/
 ```
 
+`release.sh` reads the Apple team identifier from `HEATGLANCE_TEAM_ID` and the notary credentials from the `HEATGLANCE_NOTARY_PROFILE` keychain profile.
+
 ## Permissions
 
 - Notifications, for the alerts. Nothing is sent anywhere.
