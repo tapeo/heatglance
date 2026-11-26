@@ -1,10 +1,32 @@
 # HeatGlance
 
-A menu bar app for Apple silicon Macs. It watches heat, memory, CPU and disk, tells you what is going on, and puts the fix one click away.
+A menu bar app for Apple silicon Macs that watches the machine while you are not in front of it.
+
+A build, a render or an AI agent can leave a process spinning for an hour. Nobody notices until the fans get loud. HeatGlance samples heat, memory, CPU and disk every few seconds, names the app behind a problem, and, if you leave it on, pauses the apps that heat the Mac while you are away and resumes them once it cools.
 
 ![The HeatGlance panel open from the menu bar](docs/menu.png)
 
 The icon is a thermometer that climbs as the Mac works harder: low, medium, high. Click it when the fans spin up or everything feels slow, and you get the numbers, the app behind them and the buttons to act. HeatGlance lives only in the menu bar, with no Dock icon and no main window.
+
+## When you are not at the screen
+
+Presence comes from the lock screen, display sleep, session changes and five minutes without input. A video, a call or a presentation keeps you present, for up to an hour.
+
+When thermal pressure stays serious for sixty seconds and you are away, HeatGlance picks the apps above 50% CPU and pauses them: up to three in the first round, six in total, with a second round after two minutes. A paused app stays frozen with its state intact. Apps come back after two minutes of cooler running, one every thirty seconds, and the protection then waits ten minutes before trying again. With you present it sends a notification instead.
+
+Two rules keep this safe. Only whole apps with a bundle identifier are paused, never bare processes, and every pause is written to disk before it happens and undone at the next launch, so a crash cannot leave an app frozen. Protection is on by default. You can pause it for an hour or until tomorrow, turn it off, or list the apps it must never touch.
+
+## The rest of the watch
+
+Most of what HeatGlance does never needs the panel open:
+
+- memory that keeps growing: an app that gains 1 GB over three hours and keeps climbing gets a notification with Relaunch, Quit and Ignore;
+- heavy writers: an app that writes 10 GB in an hour or 50 GB in a day gets a notification;
+- unusual load: after a week of samples, a 5× CPU or 3× memory jump over an app's own baseline;
+- leftover processes: helpers still running after their app is gone;
+- space: files over 1 GB in watched folders, and folders that grow by several gigabytes.
+
+A bare process, such as a script started from a shell, is reported but never paused.
 
 ## The panel
 
@@ -42,12 +64,6 @@ Default thresholds, all adjustable in Settings:
 
 A bundled list explains the processes people blame most: Spotlight indexing, kernel_task, Docker, Chrome helpers, Xcode builds and others. For each one HeatGlance says what it does, whether the load is normal, and whether stopping it is wise. When the app is one of those, the row says that waiting is usually better.
 
-## Thermal protection
-
-While you are away, HeatGlance can pause the apps that make the Mac hot, then resume them once it cools down. It reads presence from the lock screen, display sleep, session changes and idle time; a video, a call or a presentation counts as you being present. The feature is on by default. You can pause it for an hour or until tomorrow, turn it off, or keep a list of apps it must never pause.
-
-Two safety rules: only whole apps with a bundle identifier are paused, never bare processes, and every pause is written down before it happens and undone on the next launch, so a crash cannot leave an app frozen.
-
 ## Freeing space
 
 The Cleanup window measures a short list of known caches and empties them on request:
@@ -58,13 +74,11 @@ The Cleanup window measures a short list of known caches and empties them on req
 
 Only the folders in that list are touched. Sizes are measured before you clean, so you know what you are about to free.
 
-HeatGlance also scans a few folders for files larger than 1 GB, every 30 minutes, and warns when a watched folder grows by several gigabytes. This works inside Desktop, Documents, Downloads, Pictures, Movies, Music and the Library caches only after you grant full disk access.
-
 ## History
 
 The History window has a 24 hour chart of CPU with the worst process of each minute, and a weekly report with minutes spent in serious thermal pressure, protection interventions, and the apps that used the most CPU, memory and disk writes, plus how much each one changed from the week before.
 
-A weekly summary notification is available in Settings, off by default.
+This is where you see what happened while you were away.
 
 ## Settings
 
@@ -76,7 +90,7 @@ A weekly summary notification is available in Settings, off by default.
 
 ## What it never does
 
-- It takes no action on its own, except thermal protection, which you can pause or switch off.
+- It never acts alone. Thermal protection pauses apps and resumes them; Suspend, Quit and Ignore wait for your click.
 - It uses no privileged helper, no Apple Events and no Accessibility access.
 - It sends nothing anywhere. There is no network code, and every setting and history file stays on the Mac.
 
