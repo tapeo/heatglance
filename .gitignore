@@ -1,0 +1,8 @@
+HeatGlance.xcodeproj/
+HeatGlance/Info.plist
+build/
+dist/
+.build/
+.swiftpm/
+*.xcuserstate
+.DS_Store

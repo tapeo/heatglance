@@ -1,0 +1,178 @@
+[
+  {
+    "id": "spotlight_indexing",
+    "match": {
+      "process_names": [
+        "mds_stores",
+        "mds",
+        "mdworker_shared"
+      ]
+    },
+    "title": "Spotlight is indexing",
+    "explanation": "macOS is rebuilding its search index, usually after an update or when a new disk is connected.",
+    "typical_behavior": "Stops on its own, from a few minutes to a few hours.",
+    "suggested_action": "wait",
+    "safe_to_stop": false
+  },
+  {
+    "id": "kernel_task",
+    "match": {
+      "process_names": [
+        "kernel_task"
+      ]
+    },
+    "title": "macOS is protecting the CPU",
+    "explanation": "kernel_task takes CPU time to keep the chip cool when it gets hot.",
+    "typical_behavior": "Stops when the Mac cools down.",
+    "suggested_action": "wait",
+    "safe_to_stop": false
+  },
+  {
+    "id": "window_server",
+    "match": {
+      "process_names": [
+        "WindowServer"
+      ]
+    },
+    "title": "The window server is busy",
+    "explanation": "It draws everything on screen. High CPU usually means a lot of animation, a very large display, or a misbehaving app.",
+    "typical_behavior": "Follows what is on screen.",
+    "suggested_action": "wait",
+    "safe_to_stop": false
+  },
+  {
+    "id": "photo_analysis",
+    "match": {
+      "process_names": [
+        "photoanalysisd",
+        "mediaanalysisd"
+      ]
+    },
+    "title": "Photos is analyzing your library",
+    "explanation": "Faces, scenes and duplicates are found in the background after importing new photos.",
+    "typical_behavior": "Finishes on its own.",
+    "suggested_action": "wait",
+    "safe_to_stop": false
+  },
+  {
+    "id": "time_machine_backup",
+    "match": {
+      "process_names": [
+        "backupd",
+        "backupd-helper"
+      ]
+    },
+    "title": "Time Machine is backing up",
+    "explanation": "A backup is running in the background.",
+    "typical_behavior": "Ends when the backup completes.",
+    "suggested_action": "wait",
+    "safe_to_stop": false
+  },
+  {
+    "id": "software_update",
+    "match": {
+      "process_names": [
+        "softwareupdated"
+      ]
+    },
+    "title": "macOS is installing updates",
+    "explanation": "System updates are downloading or being prepared.",
+    "typical_behavior": "Ends when the update finishes.",
+    "suggested_action": "wait",
+    "safe_to_stop": false
+  },
+  {
+    "id": "icloud_sync",
+    "match": {
+      "process_names": [
+        "bird",
+        "cloudd",
+        "fileproviderd"
+      ]
+    },
+    "title": "iCloud is syncing",
+    "explanation": "Files are uploading or downloading from iCloud Drive or another cloud provider.",
+    "typical_behavior": "Ends when sync completes.",
+    "suggested_action": "wait",
+    "safe_to_stop": false
+  },
+  {
+    "id": "docker_vm",
+    "match": {
+      "process_names": [
+        "com.apple.Virtualization.VirtualMachine",
+        "Docker"
+      ],
+      "path_prefixes": [
+        "/Applications/Docker.app"
+      ]
+    },
+    "title": "Docker is running containers",
+    "explanation": "Containers use a virtual machine, which has its own CPU and memory cost.",
+    "typical_behavior": "Follows the containers you started.",
+    "suggested_action": "quit",
+    "safe_to_stop": true
+  },
+  {
+    "id": "chrome_helpers",
+    "match": {
+      "process_names": [
+        "Google Chrome Helper",
+        "Google Chrome Helper (Renderer)",
+        "Google Chrome Helper (GPU)"
+      ]
+    },
+    "title": "A Chrome tab or extension is busy",
+    "explanation": "Each tab and extension runs in its own helper process.",
+    "typical_behavior": "Follows the pages you have open.",
+    "suggested_action": "wait",
+    "safe_to_stop": true
+  },
+  {
+    "id": "sourcekit",
+    "match": {
+      "process_names": [
+        "SourceKitService",
+        "SwiftCompileService",
+        "swift-frontend"
+      ]
+    },
+    "title": "Xcode is compiling",
+    "explanation": "Code completion and builds run in background services.",
+    "typical_behavior": "Ends when the build or the indexing finishes.",
+    "suggested_action": "wait",
+    "safe_to_stop": false
+  },
+  {
+    "id": "xcode_build_service",
+    "match": {
+      "process_names": [
+        "XCBBuildService",
+        "ibtool",
+        "actool"
+      ]
+    },
+    "title": "An Xcode build is running",
+    "explanation": "Interface Builder and asset compilation are part of the build.",
+    "typical_behavior": "Ends with the build.",
+    "suggested_action": "wait",
+    "safe_to_stop": false
+  },
+  {
+    "id": "node_process",
+    "match": {
+      "process_names": [
+        "node",
+        "npm",
+        "pnpm",
+        "yarn",
+        "bun"
+      ]
+    },
+    "title": "A JavaScript process is running",
+    "explanation": "Usually a dev server, a build or a test run started from a terminal.",
+    "typical_behavior": "Ends when you stop the command.",
+    "suggested_action": "quit",
+    "safe_to_stop": true
+  }
+]

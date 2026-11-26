@@ -1,0 +1,53 @@
+name: HeatGlance
+
+options:
+  bundleIdPrefix: com.heatglance
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+
+packages:
+  HeatGlanceKit:
+    path: Packages/HeatGlanceKit
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    ARCHS: arm64
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ENABLE_HARDENED_RUNTIME: YES
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 1
+
+targets:
+  HeatGlance:
+    type: application
+    platform: macOS
+    sources:
+      - HeatGlance
+    dependencies:
+      - package: HeatGlanceKit
+        product: HeatGlanceCore
+      - package: HeatGlanceKit
+        product: HeatGlanceSystem
+    info:
+      path: HeatGlance/Info.plist
+      properties:
+        CFBundleDisplayName: HeatGlance
+        LSUIElement: true
+        LSApplicationCategoryType: public.app-category.utilities
+        NSHumanReadableCopyright: Copyright 2026 HeatGlance contributors. MIT License.
+        NSUserNotificationsUsageDescription: HeatGlance uses notifications to tell you when your Mac is under pressure.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.heatglance.app
+        ENABLE_APP_SANDBOX: NO
+      configs:
+        Debug:
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: "-"
+        Release:
+          CODE_SIGN_STYLE: Automatic
+          CODE_SIGN_IDENTITY: "Apple Development"
+    scheme:
+      testTargets: []
