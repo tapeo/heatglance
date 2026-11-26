@@ -4,6 +4,8 @@ import Foundation
 import AppKit
 import Darwin
 
+import HeatGlanceCore
+
 public enum ProcessActionResult: Sendable, Equatable {
     case done
     case identityChanged
@@ -112,9 +114,12 @@ public actor SuspendedProcessRegistry {
     private let defaultsKey: String
 
     public init(url: URL? = nil) {
-        self.url = url ?? SupportDirectory.url(file: "suspended.json")
+        let resolvedURL = url ?? SupportDirectory.url(file: "suspended.json")
+        self.url = resolvedURL
         self.defaultsKey = "heatglance.suspended"
-        load()
+        if let stored = try? JSONFileStore.load([SuspendedProcessEntry].self, from: resolvedURL) {
+            self.entries = Dictionary(uniqueKeysWithValues: stored.map { ($0.identity, $0) })
+        }
     }
 
     public func record(_ entry: SuspendedProcessEntry) {
@@ -167,13 +172,6 @@ public actor SuspendedProcessRegistry {
             entries.removeValue(forKey: identity)
         }
         persist()
-    }
-
-    private func load() {
-        guard let stored = try? JSONFileStore.load([SuspendedProcessEntry].self, from: url) else {
-            return
-        }
-        entries = Dictionary(uniqueKeysWithValues: stored.map { ($0.identity, $0) })
     }
 
     private func persist() {

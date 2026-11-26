@@ -8,6 +8,7 @@ public actor Sampler {
     private let processReader = ProcessReader()
     private var thermal: ThermalLevel = ThermalReader.currentLevel()
     private var temperature: Double?
+    private var fastSampling = false
 
     public init() {}
 
@@ -26,8 +27,7 @@ public actor Sampler {
                 while !Task.isCancelled {
                     let sample = await self.snapshot()
                     continuation.yield(sample)
-                    let power = PowerSourceReader.read()
-                    let seconds = power.isOnACPower ? 5.0 : 10.0
+                    let seconds = await self.nextInterval()
                     try? await Task.sleep(for: .seconds(seconds))
                 }
                 continuation.finish()
@@ -39,8 +39,22 @@ public actor Sampler {
         return stream
     }
 
+    private func nextInterval() -> Double {
+        if fastSampling {
+            return 2.0
+        }
+        if PowerSourceReader.read().isOnACPower {
+            return 5.0
+        }
+        return 10.0
+    }
+
     private func setThermal(_ level: ThermalLevel) {
         thermal = level
+    }
+
+    public func setFastSampling(_ enabled: Bool) {
+        fastSampling = enabled
     }
 
     public func setThermalOverride(_ level: ThermalLevel?) {

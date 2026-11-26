@@ -30,5 +30,21 @@ public final class Notifier: @unchecked Sendable {
     public func updateCategories(_ categories: Set<UNNotificationCategory>) {
         center.setNotificationCategories(categories)
     }
+
+    public func scheduleWeeklySummary(enabled: Bool) {
+        center.removePendingNotificationRequests(withIdentifiers: ["heatglance.weekly"])
+        guard enabled else {
+            return
+        }
+        var components = DateComponents()
+        components.weekday = 2
+        components.hour = 9
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+        let content = UNMutableNotificationContent()
+        content.title = "Your week with HeatGlance"
+        content.body = "Open History to see what kept your Mac busy."
+        content.categoryIdentifier = NotificationCategory.weeklySummary.rawValue
+        center.add(UNNotificationRequest(identifier: "heatglance.weekly", content: content, trigger: trigger)) { _ in }
+    }
 }
 #endif

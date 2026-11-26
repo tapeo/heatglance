@@ -40,6 +40,13 @@ struct HeatGlanceApp: App {
         }
         .defaultSize(width: 520, height: 420)
 
+        Window("Thermal protection", id: "protection-info") {
+            ProtectionInfoView()
+                .environment(monitor)
+                .environment(monitor.settings)
+        }
+        .defaultSize(width: 480, height: 560)
+
         Settings {
             SettingsView()
                 .environment(monitor)

@@ -10,6 +10,7 @@ final class Monitor {
 
     var latest: Sample?
     var ruleState = RuleState()
+    var activeRules: [ActiveRule] = []
     var guardState = GuardState()
     var presence: Presence = .present
     var suspendedGroups: [SuspendedGroup] = []
@@ -19,10 +20,14 @@ final class Monitor {
     var thermalOverride: ThermalLevel?
     var history = HistoryStore()
     var lastKnownItem: KnownItem?
+    var trends = TrendsEngine.fresh(now: Date())
+    var leftovers: [OrphanCandidate] = []
+    var ignoredOrphans: [String] = []
 
-    let settings = AppSettingsStore()
+    let settings: AppSettingsStore
     let registry = SuspendedProcessRegistry()
-    let notifier = Notifier()
+    let notifier: Notifier
+    private let storage: StorageWatcher
 
     private let sampler = Sampler()
     private let presenceMonitor = PresenceMonitor()
@@ -32,9 +37,16 @@ final class Monitor {
     private var presenceTask: Task<Void, Never>?
     private var lastPresenceNoticeAt: Date?
     private var lastHistorySaveAt: Date?
+    private var lastOrphanScan = Date.distantPast
+    var snapshots: [TimeMachineSnapshots.Snapshot] = []
     private var observers: [NSObjectProtocol] = []
 
     private init() {
+        let settings = AppSettingsStore()
+        let notifier = Notifier()
+        self.settings = settings
+        self.notifier = notifier
+        self.storage = StorageWatcher(notifier: notifier, settings: settings)
         loadIgnoreList()
         loadHistory()
         settings.onChange = { [weak self] in
@@ -52,6 +64,7 @@ final class Monitor {
             guard let self else {
                 return
             }
+            await sampler.setFastSampling(settings.sampleFast)
             for await sample in await sampler.start() {
                 await self.handle(sample: sample)
             }
@@ -79,6 +92,7 @@ final class Monitor {
     func shutdown() {
         stop()
         saveHistory()
+        saveTrends()
         Task {
             await registry.recoverAll()
         }
@@ -165,6 +179,13 @@ final class Monitor {
         persistIgnoreList()
     }
 
+    func ignoreOrphan(_ groupID: String) {
+        if !ignoredOrphans.contains(groupID) {
+            ignoredOrphans.append(groupID)
+        }
+        leftovers.removeAll { $0.groupID == groupID }
+    }
+
     func removeIgnore(id: String) {
         ignoreList.remove(id: id)
         persistIgnoreList()
@@ -188,11 +209,21 @@ final class Monitor {
             ignoredKeys: ignoreList.activeKeys(at: sample.date)
         )
         ruleState = result.state
-        overall = HealthLevel.worst(of: engine.activeLevels(state: ruleState))
+        activeRules = engine.activeRules(state: ruleState, now: sample.date)
+        overall = HealthLevel.worst(of: activeRules.map(\.level))
         history.record(sample)
+        let findings = trends.update(sample: sample, settings: settings.settings)
+        deliverTrends(findings, sample: sample)
+        if leftovers.isEmpty || sample.date.timeIntervalSince(lastOrphanScan) > 300 {
+            lastOrphanScan = sample.date
+            leftovers = OrphanFinder.candidates(groups: sample.groups)
+                .filter { !ignoredOrphans.contains($0.groupID) }
+        }
+        storage.handle(now: sample.date)
         if let last = lastHistorySaveAt {
             if sample.date.timeIntervalSince(last) > 600 {
                 saveHistory()
+                saveTrends()
                 lastHistorySaveAt = sample.date
             }
         } else {
@@ -325,11 +356,72 @@ final class Monitor {
         )
     }
 
+    func loadSnapshots() {
+        snapshots = TimeMachineSnapshots.list()
+    }
+
+    func deleteSnapshot(_ snapshot: TimeMachineSnapshots.Snapshot) {
+        _ = TimeMachineSnapshots.delete(date: snapshot.date)
+        loadSnapshots()
+    }
+
+    private func deliverTrends(_ findings: TrendsFindings, sample: Sample) {
+        for leak in findings.leaks {
+            guard trends.shouldNotify(key: "leak|\(leak.groupID)", now: sample.date, window: 86_400) else {
+                continue
+            }
+            notifier.send(
+                NotificationPayload(
+                    category: .leakAlert,
+                    title: "\(leak.displayName) keeps growing in memory",
+                    body: "Memory grew by at least 1 GB over the last three hours and keeps rising. Relaunch the app to free it.",
+                    userInfo: ["group": leak.groupID, "rule": "memory_leak"],
+                    identifier: "heatglance.leak.\(leak.groupID).\(Int(sample.date.timeIntervalSince1970))"
+                )
+            )
+        }
+        for writes in findings.writeOffenders {
+            let key = "writes|\(writes.displayName)"
+            guard trends.shouldNotify(key: key, now: sample.date, window: 86_400) else {
+                continue
+            }
+            notifier.send(
+                NotificationPayload(
+                    category: .systemAlert,
+                    title: "\(writes.displayName) is writing a lot to disk",
+                    body: "It wrote \(Int(Double(writes.dayBytes) / 1_073_741_824)) GB today. This wears the SSD and heats the Mac.",
+                    identifier: "heatglance.writes.\(writes.displayName).\(Int(sample.date.timeIntervalSince1970))"
+                )
+            )
+        }
+        for anomaly in findings.anomalies {
+            let key = "anomaly|\(anomaly.groupID)|\(anomaly.kind)"
+            guard trends.shouldNotify(key: key, now: sample.date, window: 3600) else {
+                continue
+            }
+            let title: String
+            if anomaly.kind == .cpu {
+                title = "\(anomaly.displayName) is using \(Int(anomaly.multiplier))× its usual CPU"
+            } else {
+                title = "\(anomaly.displayName) is using \(Int(anomaly.multiplier))× its usual memory"
+            }
+            notifier.send(
+                NotificationPayload(
+                    category: .processAlert,
+                    title: title,
+                    body: "Compared with what it usually does over the last week.",
+                    userInfo: ["group": anomaly.groupID, "rule": "anomaly"],
+                    identifier: "heatglance.anomaly.\(anomaly.groupID).\(Int(sample.date.timeIntervalSince1970))"
+                )
+            )
+        }
+    }
+
     private func deliver(notice: GuardNotice) {
         switch notice {
         case .presentAdvisory:
             let now = Date()
-            if let last = lastPresenceNoticeAt, now.timeIntervalSince(last) < 900 {
+            if let last = lastPresenceNoticeAt, now.timeIntervalSince(last) < ThermalGuardPolicy.presentAdvisoryInterval {
                 return
             }
             lastPresenceNoticeAt = now
@@ -423,7 +515,10 @@ final class Monitor {
     private func applySettings() {
         Task {
             await sampler.setThermalOverride(thermalOverride)
+            await sampler.setFastSampling(settings.sampleFast)
         }
+        _ = LoginItem.setEnabled(settings.launchAtLogin)
+        notifier.scheduleWeeklySummary(enabled: settings.weeklySummaryEnabled)
     }
 
     private func loadIgnoreList() {
@@ -440,10 +535,17 @@ final class Monitor {
         if let stored = try? JSONFileStore.load(HistoryStore.self, from: SupportDirectory.url(file: "history.json")) {
             history = stored
         }
+        if let stored = try? JSONFileStore.load(TrendsEngine.self, from: SupportDirectory.url(file: "trends.json")) {
+            trends = stored
+        }
     }
 
     private func saveHistory() {
         try? JSONFileStore.save(history, to: SupportDirectory.url(file: "history.json"))
+    }
+
+    private func saveTrends() {
+        try? JSONFileStore.save(trends, to: SupportDirectory.url(file: "trends.json"))
     }
 }
 

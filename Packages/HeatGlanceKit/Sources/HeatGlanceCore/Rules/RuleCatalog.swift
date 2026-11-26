@@ -121,8 +121,7 @@ public struct RuleCatalog {
             sustainSeconds: 0,
             clearSeconds: 0
         ) { sample, settings in
-            sample.diskAvailableRatio <= settings.diskFreeRatioThreshold
-                || sample.diskAvailableGB <= settings.diskFreeGBThreshold
+            sample.isDiskLow(thresholdGB: settings.diskFreeGBThreshold)
         }
     }
 

@@ -8,27 +8,19 @@ struct MetricRowView: View {
     let level: HealthLevel
 
     var body: some View {
-        HStack {
+        HStack(spacing: 6) {
             Circle()
-                .fill(color)
-                .frame(width: 7, height: 7)
+                .fill(level.color)
+                .frame(width: 6, height: 6)
             Text(title)
-                .font(.caption)
-            Spacer()
+                .font(.callout)
+                .lineLimit(1)
+            Spacer(minLength: 4)
             Text(value)
-                .font(.caption.monospacedDigit())
+                .font(.callout.monospacedDigit())
                 .foregroundStyle(.secondary)
-        }
-    }
-
-    private var color: Color {
-        switch level {
-        case .normal:
-            return .green
-        case .elevated:
-            return .orange
-        case .critical:
-            return .red
+                .lineLimit(1)
+                .layoutPriority(1)
         }
     }
 }

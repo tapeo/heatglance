@@ -1,8 +1,11 @@
 import Foundation
 
 #if canImport(Darwin)
+import AppKit
 import IOKit
 import IOKit.pwr_mgt
+
+import HeatGlanceCore
 
 public enum SleepAssertionsReader {
     public static func processes(keepingAwake type: String? = nil) -> [String] {

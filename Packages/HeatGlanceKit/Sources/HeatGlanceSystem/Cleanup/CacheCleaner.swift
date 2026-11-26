@@ -6,7 +6,7 @@ import HeatGlanceCore
 import AppKit
 
 public enum CacheSizer {
-    public static func sizeOnDisk(ofPath path: String) -> Int64? {
+    public static func sizeOnDisk(ofPath path: String, excluding excludedPaths: [String] = []) -> Int64? {
         let url = URL(fileURLWithPath: expand(path))
         guard FileManager.default.fileExists(atPath: url.path) else {
             return nil
@@ -15,13 +15,17 @@ public enum CacheSizer {
         guard let enumerator = FileManager.default.enumerator(
             at: url,
             includingPropertiesForKeys: Array(keys),
-            options: [.skipsHiddenFiles],
+            options: [],
             errorHandler: { _, _ in true }
         ) else {
             return nil
         }
         var total: Int64 = 0
         for case let fileURL as URL in enumerator {
+            if excludedPaths.contains(fileURL.path) {
+                enumerator.skipDescendants()
+                continue
+            }
             guard let values = try? fileURL.resourceValues(forKeys: keys), values.isRegularFile == true else {
                 continue
             }
@@ -36,7 +40,10 @@ public enum CacheSizer {
 }
 
 public enum CommandLocator {
-    private static let searchPaths = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]
+    public static var searchPaths: [String] {
+        let home = NSHomeDirectory()
+        return ["/opt/homebrew/bin", "/usr/local/bin", home + "/.docker/bin", home + "/Library/pnpm", "/usr/bin"]
+    }
 
     public static func locate(_ name: String) -> String? {
         if name.hasPrefix("/") {
@@ -78,30 +85,30 @@ public enum CacheCleaner {
             guard let tool = CommandLocator.locate(executable) else {
                 return Result(succeeded: false, message: "\(executable) is not installed")
             }
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: tool)
-            process.arguments = arguments
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            process.standardError = pipe
-            do {
-                try process.run()
-                process.waitUntilExit()
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                let output = String(decoding: data, as: UTF8.self)
-                if process.terminationStatus == 0 {
-                    return Result(succeeded: true, message: output.isEmpty ? "Done" : output)
-                }
-                return Result(succeeded: false, message: output.isEmpty ? "Failed with status \(process.terminationStatus)" : output)
-            } catch {
-                return Result(succeeded: false, message: error.localizedDescription)
+            guard let result = CommandRunner.run(tool, arguments: arguments, timeout: 600, includeErrors: true) else {
+                return Result(succeeded: false, message: "Could not start \(executable)")
             }
+            return Result(succeeded: result.succeeded, message: message(for: result))
         }
+    }
+
+    private static func message(for result: CommandResult) -> String {
+        let output = result.output.trimmingCharacters(in: .whitespacesAndNewlines)
+        if result.timedOut {
+            return "Stopped after 10 minutes"
+        }
+        if !output.isEmpty {
+            return output
+        }
+        if result.succeeded {
+            return "Done"
+        }
+        return "Failed with status \(result.status)"
     }
 }
 
 public enum LargeFileScanner {
-    public static func filesLargerThan(bytes: Int64, in root: URL, limit: Int = 50) -> [URL] {
+    public static func filesLargerThan(bytes: Int64, in root: URL, limit: Int = 50, excluding excludedPaths: [String] = []) -> [URL] {
         let keys: Set<URLResourceKey> = [.totalFileAllocatedSizeKey, .fileSizeKey, .isRegularFileKey]
         guard let enumerator = FileManager.default.enumerator(
             at: root,
@@ -113,6 +120,10 @@ public enum LargeFileScanner {
         }
         var results: [URL] = []
         for case let fileURL as URL in enumerator {
+            if excludedPaths.contains(fileURL.path) {
+                enumerator.skipDescendants()
+                continue
+            }
             guard let values = try? fileURL.resourceValues(forKeys: keys), values.isRegularFile == true else {
                 continue
             }

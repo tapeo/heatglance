@@ -35,8 +35,7 @@ struct TimeSourceTests {
 @Suite("File store")
 struct FileStoreTests {
     @Test("Round trip preserves the values")
-    func roundTrip() throws {
-        let directory = FileManager.default.temporaryDirectory
+    func roundTrip() throws {        let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("heatglance-tests-\(UUID().uuidString)", isDirectory: true)
         defer {
             try? FileManager.default.removeItem(at: directory)
@@ -55,5 +54,22 @@ struct FileStoreTests {
     func missingFile() throws {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("missing-\(UUID().uuidString).json")
         #expect(try JSONFileStore.load(IgnoreList.self, from: url) == nil)
+    }
+
+    @Test("Multi word keys survive the round trip")
+    func historyRoundTrip() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("heatglance-history-\(UUID().uuidString)", isDirectory: true)
+        defer {
+            try? FileManager.default.removeItem(at: directory)
+        }
+        let url = directory.appendingPathComponent("history.json")
+        var store = HistoryStore()
+        store.record(Fixtures.sample(groups: [Fixtures.group(cpu: 42)]))
+        try JSONFileStore.save(store, to: url)
+        let loaded = try JSONFileStore.load(HistoryStore.self, from: url)
+        #expect(loaded?.points.count == 1)
+        #expect(loaded?.points.first?.systemCPUPercent == 5)
+        #expect(loaded?.points.first?.worstGroupCPU == 42)
     }
 }

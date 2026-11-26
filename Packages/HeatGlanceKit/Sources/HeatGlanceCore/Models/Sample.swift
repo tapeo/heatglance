@@ -43,15 +43,15 @@ public struct Sample: Sendable {
         return Double(swapUsedBytes) / Double(physicalMemoryBytes)
     }
 
-    public var diskAvailableRatio: Double {
-        guard diskTotalBytes > 0 else {
-            return 1
-        }
-        return Double(diskAvailableBytes) / Double(diskTotalBytes)
-    }
-
     public var diskAvailableGB: Double {
         Double(diskAvailableBytes) / Double(1_073_741_824)
+    }
+
+    public func isDiskLow(thresholdGB: Double) -> Bool {
+        guard diskTotalBytes > 0 else {
+            return false
+        }
+        return diskAvailableGB <= thresholdGB
     }
 
     public var topGroups: [ProcessGroup] {

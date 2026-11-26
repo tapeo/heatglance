@@ -142,8 +142,34 @@ struct RuleEngineTests {
         #expect(result.alerts.isEmpty)
     }
 
-    @Test("Disk free triggers below the ratio")
-    func diskFree() {
+    @Test("Disk free triggers at or below the GB threshold")
+    func diskFreeBelowThreshold() {
+        let engine = RuleEngine()
+        let fifteenGB = Int64(15) * 1_073_741_824
+        let result = engine.evaluate(
+            sample: Fixtures.sample(diskAvailable: fifteenGB, diskTotal: 1_000_000_000_000),
+            settings: settings,
+            state: RuleState(),
+            now: Fixtures.baseDate
+        )
+        #expect(result.alerts.contains { $0.ruleID == "disk_free" })
+    }
+
+    @Test("Disk free triggers exactly at the threshold")
+    func diskFreeAtThreshold() {
+        let engine = RuleEngine()
+        let twentyGB = Int64(20) * 1_073_741_824
+        let result = engine.evaluate(
+            sample: Fixtures.sample(diskAvailable: twentyGB, diskTotal: 1_000_000_000_000),
+            settings: settings,
+            state: RuleState(),
+            now: Fixtures.baseDate
+        )
+        #expect(result.alerts.contains { $0.ruleID == "disk_free" })
+    }
+
+    @Test("A low free ratio alone does not trigger the disk rule")
+    func diskFreeIgnoresRatio() {
         let engine = RuleEngine()
         let result = engine.evaluate(
             sample: Fixtures.sample(diskAvailable: 50_000_000_000, diskTotal: 1_000_000_000_000),
@@ -151,7 +177,19 @@ struct RuleEngineTests {
             state: RuleState(),
             now: Fixtures.baseDate
         )
-        #expect(result.alerts.contains { $0.ruleID == "disk_free" })
+        #expect(!result.alerts.contains { $0.ruleID == "disk_free" })
+    }
+
+    @Test("An unreadable disk does not trigger the disk rule")
+    func diskFreeUnreadable() {
+        let engine = RuleEngine()
+        let result = engine.evaluate(
+            sample: Fixtures.sample(diskAvailable: 0, diskTotal: 0),
+            settings: settings,
+            state: RuleState(),
+            now: Fixtures.baseDate
+        )
+        #expect(!result.alerts.contains { $0.ruleID == "disk_free" })
     }
 
     @Test("Swap triggers above the ratio")
@@ -171,16 +209,60 @@ struct RuleEngineTests {
         #expect(result.alerts.contains { $0.ruleID == "swap_high" })
     }
 
-    @Test("Active levels collect the firing rules")
-    func activeLevels() {
+    @Test("A rule waiting for its sustain is not active")
+    func activeRulesSustain() {
         let engine = RuleEngine()
         let state = RuleState(
             firingSince: [
                 "thermal_serious|system": ConditionStamp(startedAt: Fixtures.baseDate, lastSeenAt: Fixtures.baseDate),
-                "disk_free|system": ConditionStamp(startedAt: Fixtures.baseDate, lastSeenAt: Fixtures.baseDate),
             ]
         )
-        #expect(engine.activeLevels(state: state) == [.elevated, .elevated])
+        #expect(engine.activeRules(state: state, now: Fixtures.baseDate.addingTimeInterval(30)).isEmpty)
+
+        let active = engine.activeRules(state: state, now: Fixtures.baseDate.addingTimeInterval(60))
+        #expect(active.count == 1)
+        #expect(active.first?.ruleID == "thermal_serious")
+        #expect(active.first?.groupID == nil)
+    }
+
+    @Test("Critical rules come first")
+    func activeRulesOrder() {
+        let engine = RuleEngine()
+        let state = RuleState(
+            firingSince: [
+                "thermal_serious|system": ConditionStamp(startedAt: Fixtures.baseDate, lastSeenAt: Fixtures.baseDate),
+                "memory_critical|system": ConditionStamp(
+                    startedAt: Fixtures.baseDate.addingTimeInterval(10),
+                    lastSeenAt: Fixtures.baseDate.addingTimeInterval(10)
+                ),
+            ]
+        )
+        let active = engine.activeRules(state: state, now: Fixtures.baseDate.addingTimeInterval(100))
+        #expect(active.first?.ruleID == "memory_critical")
+        #expect(active.last?.ruleID == "thermal_serious")
+    }
+
+    @Test("Group rules carry the group id")
+    func activeRulesGroup() {
+        let engine = RuleEngine()
+        let state = RuleState(
+            firingSince: [
+                "process_cpu|com.example.app": ConditionStamp(startedAt: Fixtures.baseDate, lastSeenAt: Fixtures.baseDate),
+            ]
+        )
+        let active = engine.activeRules(state: state, now: Fixtures.baseDate.addingTimeInterval(200))
+        #expect(active.first?.groupID == "com.example.app")
+    }
+
+    @Test("Unknown rule keys are skipped")
+    func activeRulesUnknown() {
+        let engine = RuleEngine()
+        let state = RuleState(
+            firingSince: [
+                "missing|system": ConditionStamp(startedAt: Fixtures.baseDate, lastSeenAt: Fixtures.baseDate),
+            ]
+        )
+        #expect(engine.activeRules(state: state, now: Fixtures.baseDate.addingTimeInterval(200)).isEmpty)
     }
 }
 

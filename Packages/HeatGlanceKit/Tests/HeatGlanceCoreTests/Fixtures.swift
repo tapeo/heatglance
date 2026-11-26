@@ -13,8 +13,7 @@ enum Fixtures {
         footprint: UInt64 = 0,
         written: UInt64 = 0,
         path: String = "/usr/bin/worker"
-    ) -> ProcessSnapshot {
-        ProcessSnapshot(
+    ) -> ProcessSnapshot {        ProcessSnapshot(
             identity: ProcessIdentity(pid: pid, startTime: baseDate),
             parentPID: 1,
             userID: 501,
@@ -38,6 +37,15 @@ enum Fixtures {
             displayName: name,
             bundleIdentifier: id.contains("com.") ? id : nil,
             members: [process(cpu: cpu, footprint: footprint, written: written)]
+        )
+    }
+
+    static func orphanGroup(path: String, name: String = "foo", cpu: Double = 20) -> ProcessGroup {
+        ProcessGroup(
+            id: path,
+            displayName: name,
+            bundleIdentifier: nil,
+            members: [process(pid: 400, name: name, cpu: cpu, path: path)]
         )
     }
 

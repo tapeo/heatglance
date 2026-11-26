@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 import HeatGlanceCore
@@ -5,6 +6,7 @@ import HeatGlanceSystem
 
 struct ProtectionSettingsView: View {
     @Environment(AppSettingsStore.self) private var settings
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         @Bindable var settings = settings
@@ -24,6 +26,10 @@ struct ProtectionSettingsView: View {
                     step: 5
                 ) {
                     Text("Sustain")
+                }
+                Button("How thermal protection works") {
+                    NSApplication.shared.activate()
+                    openWindow(id: "protection-info")
                 }
             }
             Section("Presence") {

@@ -190,15 +190,30 @@ public struct RuleEngine {
         }
     }
 
-    public func activeLevels(state: RuleState) -> [HealthLevel] {
-        var levels: [HealthLevel] = []
-        for (key, _) in state.firingSince {
-            let ruleID = String(key.split(separator: "|").first ?? "")
-            guard let rule = catalog.definition(id: ruleID) else {
+    public func activeRules(state: RuleState, now: Date) -> [ActiveRule] {
+        var rules: [ActiveRule] = []
+        for (stateKey, stamp) in state.firingSince {
+            let parts = stateKey.split(separator: "|", maxSplits: 1, omittingEmptySubsequences: false)
+            guard parts.count == 2, let rule = catalog.definition(id: String(parts[0])) else {
                 continue
             }
-            levels.append(rule.level)
+            guard enabledRuleIDs.contains(rule.id) else {
+                continue
+            }
+            guard now.timeIntervalSince(stamp.startedAt) >= rule.sustainSeconds else {
+                continue
+            }
+            rules.append(
+                ActiveRule(
+                    ruleID: rule.id,
+                    title: rule.title,
+                    level: rule.level,
+                    isSystemWide: rule.scope == .system,
+                    targetKey: String(parts[1]),
+                    since: stamp.startedAt
+                )
+            )
         }
-        return levels
+        return rules.sorted(by: ActiveRule.isMoreUrgent)
     }
 }

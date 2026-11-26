@@ -32,21 +32,31 @@ final class AppSettingsStore {
     var excludedFolders: [String] {
         didSet { persist() }
     }
+    var didSetup: Bool {
+        didSet { persist() }
+    }
 
     var onChange: (() -> Void)?
 
     init() {
-        settings = Self.read(AppSettings.self, key: "heatglance.appSettings") ?? .defaults
-        protection = Self.read(ProtectionSettings.self, key: "heatglance.protection") ?? .defaults
-        presence = Self.read(PresenceSettings.self, key: "heatglance.presence") ?? .defaults
-        launchAtLogin = UserDefaults.standard.bool(forKey: "heatglance.launchAtLogin")
-        sampleFast = UserDefaults.standard.bool(forKey: "heatglance.sampleFast")
-        weeklySummaryEnabled = UserDefaults.standard.bool(forKey: "heatglance.weeklySummary")
-        largeFileThresholdGB = UserDefaults.standard.double(forKey: "heatglance.largeFileGB")
-        if largeFileThresholdGB == 0 {
-            largeFileThresholdGB = 1
+        let defaults = UserDefaults.standard
+        let storedSettings = Self.read(AppSettings.self, key: "heatglance.appSettings") ?? .defaults
+        let storedProtection = Self.read(ProtectionSettings.self, key: "heatglance.protection") ?? .defaults
+        let storedPresence = Self.read(PresenceSettings.self, key: "heatglance.presence") ?? .defaults
+        var threshold = defaults.double(forKey: "heatglance.largeFileGB")
+        if threshold == 0 {
+            threshold = 1
         }
-        excludedFolders = UserDefaults.standard.stringArray(forKey: "heatglance.excludedFolders") ?? []
+
+        self.settings = storedSettings
+        self.protection = storedProtection
+        self.presence = storedPresence
+        self.launchAtLogin = defaults.bool(forKey: "heatglance.launchAtLogin")
+        self.sampleFast = defaults.bool(forKey: "heatglance.sampleFast")
+        self.weeklySummaryEnabled = defaults.bool(forKey: "heatglance.weeklySummary")
+        self.largeFileThresholdGB = threshold
+        self.excludedFolders = defaults.stringArray(forKey: "heatglance.excludedFolders") ?? []
+        self.didSetup = defaults.bool(forKey: "heatglance.didSetup")
     }
 
     private func persist() {
@@ -58,6 +68,7 @@ final class AppSettingsStore {
         defaults.set(weeklySummaryEnabled, forKey: "heatglance.weeklySummary")
         defaults.set(largeFileThresholdGB, forKey: "heatglance.largeFileGB")
         defaults.set(excludedFolders, forKey: "heatglance.excludedFolders")
+        defaults.set(didSetup, forKey: "heatglance.didSetup")
         onChange?()
     }
 

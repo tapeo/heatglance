@@ -3,6 +3,8 @@ import Foundation
 #if canImport(Darwin)
 import Darwin
 
+import HeatGlanceCore
+
 public enum MemoryReader {
     public static func pressureLevel() -> MemoryPressureLevel {
         var value: Int32 = 0

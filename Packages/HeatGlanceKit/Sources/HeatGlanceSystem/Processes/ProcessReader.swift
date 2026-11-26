@@ -4,6 +4,8 @@ import Foundation
 import AppKit
 import Darwin
 
+import HeatGlanceCore
+
 public actor ProcessReader {
     private struct UsageSample {
         let micros: UInt64
@@ -84,7 +86,7 @@ public actor ProcessReader {
         while capacity <= 65_536 {
             var pids = [pid_t](repeating: 0, count: capacity)
             let bytes = pids.withUnsafeMutableBytes { buffer -> Int in
-                proc_listallpids(buffer.baseAddress, Int32(buffer.count * MemoryLayout<pid_t>.stride))
+                Int(proc_listallpids(buffer.baseAddress, Int32(buffer.count * MemoryLayout<pid_t>.stride)))
             }
             guard bytes > 0 else {
                 return []

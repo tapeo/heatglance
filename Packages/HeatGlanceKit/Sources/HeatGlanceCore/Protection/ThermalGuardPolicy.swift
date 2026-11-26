@@ -1,6 +1,8 @@
 import Foundation
 
 public struct ThermalGuardPolicy {
+    public static let presentAdvisoryInterval: TimeInterval = 900
+
     public init() {}
 
     public func decide(input: GuardInput, state: GuardState) -> GuardResult {

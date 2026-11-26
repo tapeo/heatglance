@@ -4,9 +4,12 @@ import HeatGlanceCore
 import HeatGlanceSystem
 
 struct CleanupView: View {
-    @State private var sizes: [String: Int64] = [:]
+    @Environment(Monitor.self) private var monitor
+    @State private var measurements: [String: CacheMeasurement] = [:]
+    @State private var isMeasuring = false
     @State private var messages: [String: String] = [:]
     @State private var busyItemID: String?
+    @State private var snapshotMessage: String?
 
     private let catalog = CacheCatalog()
 
@@ -22,13 +25,50 @@ struct CleanupView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Button("Refresh sizes") {
+                Button(refreshTitle) {
                     Task { await measureAll() }
                 }
+                .disabled(isMeasuring)
             }
             .padding(10)
+            snapshotSection
         }
-        .task { await measureAll() }
+        .task {
+            await measureAll()
+            monitor.loadSnapshots()
+        }
+    }
+
+    @ViewBuilder
+    private var snapshotSection: some View {
+        Divider()
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Time Machine local snapshots")
+                .font(.caption.bold())
+            if monitor.snapshots.isEmpty {
+                Text("None. They appear when Time Machine backs up.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if let snapshotMessage {
+                Text(snapshotMessage)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            ForEach(monitor.snapshots) { snapshot in
+                HStack {
+                    Text(snapshot.date)
+                        .font(.caption.monospacedDigit())
+                    Spacer()
+                    Button("Delete") {
+                        monitor.deleteSnapshot(snapshot)
+                        snapshotMessage = "Deleting local snapshots needs administrator rights. macOS asks for the password when the helper is installed."
+                    }
+                    .controlSize(.mini)
+                }
+            }
+        }
+        .padding(10)
     }
 
     private func itemRow(_ item: CacheItem) -> some View {
@@ -47,41 +87,87 @@ struct CleanupView: View {
                 }
             }
             Spacer()
-            Text(sizeText(for: item))
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
-                .frame(width: 80, alignment: .trailing)
+            sizeView(for: item)
+                .frame(width: 100, alignment: .trailing)
             Button(busyItemID == item.id ? "Working…" : "Clean") {
                 clean(item)
             }
-            .disabled(busyItemID != nil)
+            .disabled(busyItemID != nil || !canClean(item))
             .controlSize(.small)
         }
         .padding(.vertical, 4)
     }
 
-    private func sizeText(for item: CacheItem) -> String {
-        guard let path = item.path else {
-            return item.command == nil ? "" : "Available"
+    @ViewBuilder
+    private func sizeView(for item: CacheItem) -> some View {
+        let measurement = measurements[item.id] ?? .measuring
+        if measurement == .measuring {
+            ProgressView()
+                .controlSize(.small)
+        } else {
+            Text(sizeText(measurement))
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
         }
-        guard let size = sizes[item.id] else {
-            return "—"
+    }
+
+    private var refreshTitle: String {
+        if isMeasuring {
+            return "Measuring…"
         }
-        return ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
+        return "Refresh sizes"
+    }
+
+    private func sizeText(_ measurement: CacheMeasurement) -> String {
+        switch measurement {
+        case let .size(bytes, isUpperBound):
+            if isUpperBound {
+                return "Up to " + ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+            }
+            return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+        case .empty:
+            return "Empty"
+        case .notInstalled:
+            return "Not installed"
+        case .notRunning:
+            return "Not running"
+        case .unknown:
+            return "Unknown"
+        case .measuring:
+            return "Measuring"
+        }
+    }
+
+    private func canClean(_ item: CacheItem) -> Bool {
+        (measurements[item.id] ?? .measuring).canClean
     }
 
     private func measureAll() async {
+        guard !isMeasuring else {
+            return
+        }
+        isMeasuring = true
         for item in catalog.items {
-            guard let path = item.path else {
-                continue
+            measurements[item.id] = .measuring
+        }
+        await withTaskGroup(of: (String, CacheMeasurement).self) { group in
+            for item in catalog.items {
+                let id = item.id
+                let source = item.size
+                group.addTask {
+                    (id, await CacheMeasurer.measure(source))
+                }
             }
-            let measured = await Task.detached(priority: .utility) {
-                CacheSizer.sizeOnDisk(ofPath: path)
-            }.value
-            if let measured {
-                sizes[item.id] = measured
+            for await (id, measurement) in group {
+                measurements[id] = measurement
             }
         }
+        isMeasuring = false
+    }
+
+    private func measure(_ item: CacheItem) async {
+        measurements[item.id] = .measuring
+        measurements[item.id] = await CacheMeasurer.measure(item.size)
     }
 
     private func clean(_ item: CacheItem) {
@@ -92,7 +178,7 @@ struct CleanupView: View {
             }.value
             messages[item.id] = result.message
             busyItemID = nil
-            await measureAll()
+            await measure(item)
         }
     }
 }

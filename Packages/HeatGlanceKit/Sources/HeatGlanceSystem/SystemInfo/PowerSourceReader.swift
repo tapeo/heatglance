@@ -3,6 +3,8 @@ import Foundation
 #if canImport(Darwin)
 import IOKit.ps
 
+import HeatGlanceCore
+
 public struct PowerState: Sendable {
     public let isOnACPower: Bool
     public let isCharging: Bool

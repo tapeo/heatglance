@@ -15,7 +15,7 @@ public struct ProtectionSettings: Sendable, Codable, Equatable {
     public var pausedUntil: Date?
 
     public init(
-        isEnabled: Bool = false,
+        isEnabled: Bool = true,
         triggerLevel: ThermalLevel = .serious,
         sustainSeconds: Double = 60,
         culpritCPUThreshold: Double = 50,

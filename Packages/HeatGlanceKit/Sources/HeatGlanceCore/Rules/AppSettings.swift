@@ -10,7 +10,6 @@ public struct AppSettings: Sendable, Codable, Equatable {
     public var systemCPUSustainSeconds: Double
     public var processCPUThreshold: Double
     public var processCPUSustainSeconds: Double
-    public var diskFreeRatioThreshold: Double
     public var diskFreeGBThreshold: Double
     public var uptimeDays: Int
     public var leakMinimumBytes: UInt64
@@ -32,7 +31,6 @@ public struct AppSettings: Sendable, Codable, Equatable {
         systemCPUSustainSeconds: Double = 120,
         processCPUThreshold: Double = 150,
         processCPUSustainSeconds: Double = 120,
-        diskFreeRatioThreshold: Double = 0.10,
         diskFreeGBThreshold: Double = 20,
         uptimeDays: Int = 21,
         leakMinimumBytes: UInt64 = 1_073_741_824,
@@ -53,7 +51,6 @@ public struct AppSettings: Sendable, Codable, Equatable {
         self.systemCPUSustainSeconds = systemCPUSustainSeconds
         self.processCPUThreshold = processCPUThreshold
         self.processCPUSustainSeconds = processCPUSustainSeconds
-        self.diskFreeRatioThreshold = diskFreeRatioThreshold
         self.diskFreeGBThreshold = diskFreeGBThreshold
         self.uptimeDays = uptimeDays
         self.leakMinimumBytes = leakMinimumBytes
