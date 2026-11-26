@@ -4,7 +4,7 @@ A menu bar app for Apple silicon Macs that watches the machine while you are not
 
 A build, a render or an AI agent can leave a process spinning for an hour. Nobody notices until the fans get loud. HeatGlance samples heat, memory, CPU and disk every few seconds, names the app behind a problem, and, if you leave it on, pauses the apps that heat the Mac while you are away and resumes them once it cools.
 
-![The HeatGlance panel open from the menu bar](docs/menu.png)
+<img src="docs/menu.png" width="360" alt="The HeatGlance panel open from the menu bar">
 
 The icon is a thermometer that climbs as the Mac works harder: low, medium, high. Click it when the fans spin up or everything feels slow, and you get the numbers, the app behind them and the buttons to act. HeatGlance lives only in the menu bar, with no Dock icon and no main window.
 
