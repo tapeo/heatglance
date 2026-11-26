@@ -1,8 +1,10 @@
 # HeatGlance
 
-A menu bar app for Apple silicon Macs that watches the machine while you are not in front of it.
+A menu bar app for people who leave AI agents working on their Mac and walk away.
 
-A build, a render or an AI agent can leave a process spinning for an hour. Nobody notices until the fans get loud. HeatGlance samples heat, memory, CPU and disk every few seconds, names the app behind a problem, and, if you leave it on, pauses the apps that heat the Mac while you are away and resumes them once it cools.
+I built HeatGlance after an agent left a process in a loop on my Mac while I was away from the screen. The machine stayed hot for an hour before I noticed. If the Mac stays awake with the lid closed, an agent can work for hours with nobody watching, and a loop does not stop by itself.
+
+HeatGlance samples heat, memory, CPU and disk every few seconds, names the app behind a problem, and, if you leave it on, pauses the apps that heat the Mac while you are away and resumes them once it cools. It is built for the hours when nobody is managing the Mac.
 
 <img src="docs/menu.png" width="360" alt="The HeatGlance panel open from the menu bar">
 
