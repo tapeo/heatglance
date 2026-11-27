@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 
 import HeatGlanceCore
@@ -12,9 +13,15 @@ struct WeeklyReportView: View {
                 stat("Minutes over serious", "\(report.seriousMinutes)")
                 stat("Protection interventions", "\(report.interventions)")
             }
-            list("Top CPU", entries: report.topCPU, unit: "points")
-            list("Top memory", entries: report.topMemory, unit: "GB")
-            list("Top disk writes", entries: report.topWrites, unit: "GB")
+            list("Top CPU, core hours", entries: report.topCPU) { value in
+                String(format: "%.1f", value)
+            }
+            list("Top memory", entries: report.topMemory) { value in
+                ByteCountFormatter.string(fromByteCount: Int64(value.rounded()), countStyle: .memory)
+            }
+            list("Top disk writes", entries: report.topWrites) { value in
+                String(format: "%.1f GB", value)
+            }
             Spacer()
         }
     }
@@ -29,7 +36,11 @@ struct WeeklyReportView: View {
         }
     }
 
-    private func list(_ title: String, entries: [WeeklyReport.Entry], unit: String) -> some View {
+    private func list(
+        _ title: String,
+        entries: [WeeklyReport.Entry],
+        format: @escaping (Double) -> String
+    ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.caption.bold())
@@ -43,7 +54,7 @@ struct WeeklyReportView: View {
                     Text(entry.displayName)
                         .font(.caption)
                     Spacer()
-                    Text(String(format: "%.1f %@", entry.value, unit))
+                    Text(format(entry.value))
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                     if let change = entry.change {

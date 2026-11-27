@@ -104,6 +104,39 @@ struct TrendsTests {
         #expect(report.seriousMinutes == 35)
     }
 
+    @Test("CPU accumulates in core hours from the sample interval")
+    func cpuCoreHours() {
+        var engine = TrendsEngine.fresh(now: Fixtures.baseDate)
+        _ = engine.update(
+            sample: Fixtures.sample(date: Fixtures.baseDate, groups: [Fixtures.group(cpu: 100)]),
+            settings: AppSettings()
+        )
+        _ = engine.update(
+            sample: Fixtures.sample(date: Fixtures.baseDate.addingTimeInterval(60), groups: [Fixtures.group(cpu: 100)]),
+            settings: AppSettings()
+        )
+        let day = Calendar.current.startOfDay(for: Fixtures.baseDate)
+        let summary = engine.summaries.summaries.first { $0.day == day }
+        let hours = summary?.topCPU.first?.value ?? 0
+        #expect(abs(hours - 1.0 / 60) < 0.000_001)
+    }
+
+    @Test("Weekly memory takes the daily peak, not the sum")
+    func weeklyMemoryPeak() {
+        var store = DailySummaryStore()
+        let day = Calendar.current.startOfDay(for: Fixtures.baseDate)
+        let next = Calendar.current.date(byAdding: .day, value: 1, to: day)!
+        for (date, value) in [(day, 4_000_000_000.0), (next, 5_000_000_000.0)] {
+            store.update(
+                DailySummary(
+                    day: date,
+                    topMemory: [AppTotal(groupID: "com.example.app", displayName: "Example", value: value)]
+                )
+            )
+        }
+        #expect(store.week(endingAt: next).topMemory.first?.value == 5_000_000_000)
+    }
+
     @Test("An orphan needs a launchd parent, a bundle path and no running app")
     func orphanClassification() {
         let classifier = OrphanClassifier()

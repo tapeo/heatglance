@@ -18,19 +18,22 @@ public struct TrendsEngine: Sendable, Codable {
     public var baselines: BaselineStore
     public var summaries: DailySummaryStore
     public var lastNotified: [String: Date]
+    public var lastSummarySampleDate: Date?
 
     public init(
         leaks: LeakDetector = LeakDetector(),
         writes: DiskWriteTracker,
         baselines: BaselineStore = BaselineStore(),
         summaries: DailySummaryStore = DailySummaryStore(),
-        lastNotified: [String: Date] = [:]
+        lastNotified: [String: Date] = [:],
+        lastSummarySampleDate: Date? = nil
     ) {
         self.leaks = leaks
         self.writes = writes
         self.baselines = baselines
         self.summaries = summaries
         self.lastNotified = lastNotified
+        self.lastSummarySampleDate = lastSummarySampleDate
     }
 
     public static func fresh(now: Date) -> TrendsEngine {
@@ -81,8 +84,11 @@ public struct TrendsEngine: Sendable, Codable {
         if sample.thermal >= .serious {
             summary.thermalSeriousMinutes += 1
         }
+        let interval = takeSummaryInterval(upTo: sample.date)
         for group in sample.groups where group.isApplication {
-            summary.cpuAccumulator[group.id, default: 0] += group.cpuPercent / 60
+            if let interval {
+                summary.cpuAccumulator[group.id, default: 0] += group.cpuPercent / 100 * interval / 3600
+            }
             summary.memoryPeaks[group.id] = max(summary.memoryPeaks[group.id] ?? 0, Double(group.footprintBytes))
         }
         if let top = writes.topWriter {
@@ -94,6 +100,19 @@ public struct TrendsEngine: Sendable, Codable {
         summary.topCPU = topTotals(summary.cpuAccumulator, names: nameMap(sample))
         summary.topMemory = topTotals(summary.memoryPeaks, names: nameMap(sample))
         summaries.update(summary)
+    }
+
+    private mutating func takeSummaryInterval(upTo date: Date) -> Double? {
+        let previous = lastSummarySampleDate
+        lastSummarySampleDate = date
+        guard let previous else {
+            return nil
+        }
+        let interval = date.timeIntervalSince(previous)
+        guard interval > 0, interval <= 120 else {
+            return nil
+        }
+        return interval
     }
 
     private func nameMap(_ sample: Sample) -> [String: String] {
