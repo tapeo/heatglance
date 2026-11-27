@@ -1,49 +1,13 @@
-import Charts
 import SwiftUI
 
 import HeatGlanceCore
 
-struct HistoryView: View {
+struct WeeklyReportView: View {
     @Environment(Monitor.self) private var monitor
 
     var body: some View {
-        TabView {
-            lastDay
-                .tabItem { Label("24 hours", systemImage: "clock") }
-            thisWeek
-                .tabItem { Label("This week", systemImage: "calendar") }
-        }
-        .padding()
-        .frame(minWidth: 520, minHeight: 360)
-    }
-
-    private var lastDay: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if monitor.history.points.isEmpty {
-                Text("History builds up while HeatGlance runs.")
-                    .foregroundStyle(.secondary)
-            } else {
-                Chart(monitor.history.points(since: Date().addingTimeInterval(-86_400))) { point in
-                    LineMark(
-                        x: .value("Time", point.minute),
-                        y: .value("CPU", point.systemCPUPercent)
-                    )
-                    .foregroundStyle(by: .value("Metric", "CPU %"))
-                }
-                .chartYAxisLabel("CPU %")
-                .frame(minHeight: 220)
-
-                Text("Worst process: \(latestWorst)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-        }
-    }
-
-    private var thisWeek: some View {
         let report = monitor.trends.summaries.week(endingAt: Date())
-        return VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 16) {
                 stat("Minutes over serious", "\(report.seriousMinutes)")
                 stat("Protection interventions", "\(report.interventions)")
@@ -85,7 +49,7 @@ struct HistoryView: View {
                     if let change = entry.change {
                         Text(String(format: "%+.0f%%", change * 100))
                             .font(.caption2.monospacedDigit())
-                            .foregroundStyle(change > 0 ? .orange : .green)
+                            .foregroundStyle(changeColor(change))
                             .frame(width: 46, alignment: .trailing)
                     }
                 }
@@ -93,10 +57,10 @@ struct HistoryView: View {
         }
     }
 
-    private var latestWorst: String {
-        guard let point = monitor.history.points.last, let name = point.worstGroupName else {
-            return "none"
+    private func changeColor(_ change: Double) -> Color {
+        if change > 0 {
+            return .orange
         }
-        return "\(name) at \(Int(point.worstGroupCPU))%"
+        return .green
     }
 }

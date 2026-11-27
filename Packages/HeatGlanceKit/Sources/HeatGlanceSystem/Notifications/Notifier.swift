@@ -5,6 +5,7 @@ import UserNotifications
 
 public final class Notifier: @unchecked Sendable {
     private let center = UNUserNotificationCenter.current()
+    public var onSend: (@Sendable (NotificationPayload) -> Void)?
 
     public init() {}
 
@@ -25,6 +26,7 @@ public final class Notifier: @unchecked Sendable {
             trigger: nil
         )
         center.add(request) { _ in }
+        onSend?(payload)
     }
 
     public func updateCategories(_ categories: Set<UNNotificationCategory>) {

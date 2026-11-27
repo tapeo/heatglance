@@ -78,7 +78,17 @@ Only the folders in that list are touched. Sizes are measured before you clean, 
 
 ## History
 
-The History window has a 24 hour chart of CPU with the worst process of each minute, and a weekly report with minutes spent in serious thermal pressure, protection interventions, and the apps that used the most CPU, memory and disk writes, plus how much each one changed from the week before.
+History has three tabs: a chart, an event log, and the weekly report.
+
+The chart shows thermal pressure and memory pressure, temperature, CPU, swap and free disk as panels stacked over the same time axis. Pick 6 hours, 24 hours or 7 days: up to six hours every point is a minute, beyond that each bucket keeps the highest level, CPU, temperature and swap of its window and the lowest free disk, so the chart stays responsive. Or pick one of the last seven days and see it minute by minute. Gray bands mark the time you were away, orange bands the time apps were paused by the protection. Hover any panel and the detail line above updates for all of them: time, levels, temperature, CPU, swap, free disk, the app that used the most CPU, and the events of that minute.
+
+The Events tab lists what HeatGlance saw, newest first, grouped by day and filtered by category: alerts, notifications, protection, your actions, presence. Each alert appears once, with a bell when it also produced a notification; the same goes for paused apps and for coming back. Protection changes are rows of their own, and so are Suspend, Resume, Quit and Force quit from the menu, and the moments you left the Mac and came back. Notifications without an event of their own, such as large files and growing folders, are listed as notifications.
+
+The This week tab has minutes spent in serious thermal pressure, protection interventions, and the apps that used the most CPU, memory and disk writes, with the change from the week before.
+
+Export copies the events as text, saves them as CSV, or saves the minutes as CSV. Points and events are kept for seven days.
+
+Both files live in the HeatGlance folder in Application Support: `history.json` for the minutes and `events.json` for the events.
 
 This is where you see what happened while you were away.
 

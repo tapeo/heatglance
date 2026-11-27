@@ -52,6 +52,24 @@ public struct ProtectionSettings: Sendable, Codable, Equatable {
     }
 }
 
+public enum ProtectionMode: Sendable, Equatable {
+    case on
+    case off
+    case paused(until: Date)
+}
+
+extension ProtectionSettings {
+    public func mode(at date: Date) -> ProtectionMode {
+        guard isEnabled else {
+            return .off
+        }
+        guard let pausedUntil, isPaused(at: date) else {
+            return .on
+        }
+        return .paused(until: pausedUntil)
+    }
+}
+
 public struct SuspendedGroup: Sendable, Codable, Equatable {
     public let groupID: String
     public let displayName: String

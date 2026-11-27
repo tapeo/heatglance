@@ -89,6 +89,10 @@ public struct Alert: Sendable, Identifiable {
             self.id = ruleID
         }
     }
+
+    public var activeRuleID: String {
+        "\(ruleID)|\(groupID ?? "system")"
+    }
 }
 
 extension String {

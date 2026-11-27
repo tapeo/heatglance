@@ -80,19 +80,22 @@ public struct NotificationPayload: Sendable {
     public let body: String
     public let userInfo: [String: String]
     public let identifier: String
+    public let logsAsEvent: Bool
 
     public init(
         category: NotificationCategory,
         title: String,
         body: String,
         userInfo: [String: String] = [:],
-        identifier: String = UUID().uuidString
+        identifier: String = UUID().uuidString,
+        logsAsEvent: Bool = true
     ) {
         self.category = category
         self.title = title
         self.body = body
         self.userInfo = userInfo
         self.identifier = identifier
+        self.logsAsEvent = logsAsEvent
     }
 }
 #endif

@@ -58,12 +58,13 @@ enum Fixtures {
         systemCPU: Double = 5,
         diskAvailable: Int64 = 500_000_000_000,
         diskTotal: Int64 = 1_000_000_000_000,
-        groups: [ProcessGroup] = []
+        groups: [ProcessGroup] = [],
+        temperature: Double? = nil
     ) -> Sample {
         Sample(
             date: date,
             thermal: thermal,
-            temperatureCelsius: nil,
+            temperatureCelsius: temperature,
             memoryPressure: memoryPressure,
             swapUsedBytes: swapUsed,
             physicalMemoryBytes: physical,

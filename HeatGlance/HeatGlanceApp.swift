@@ -31,7 +31,7 @@ struct HeatGlanceApp: App {
                 .environment(monitor)
                 .environment(monitor.settings)
         }
-        .defaultSize(width: 640, height: 420)
+        .defaultSize(width: 760, height: 680)
 
         Window("Setup", id: "setup") {
             SetupView()

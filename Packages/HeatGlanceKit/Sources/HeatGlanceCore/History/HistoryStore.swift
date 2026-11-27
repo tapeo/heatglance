@@ -10,6 +10,9 @@ public struct HistoryPoint: Sendable, Codable, Identifiable {
     public let diskAvailableBytes: Int64
     public let worstGroupName: String?
     public let worstGroupCPU: Double
+    public let temperatureCelsius: Double?
+    public let isAway: Bool?
+    public let pausedApps: Int?
 
     public init(
         minute: Date,
@@ -19,7 +22,10 @@ public struct HistoryPoint: Sendable, Codable, Identifiable {
         swapUsedBytes: UInt64,
         diskAvailableBytes: Int64,
         worstGroupName: String?,
-        worstGroupCPU: Double
+        worstGroupCPU: Double,
+        temperatureCelsius: Double? = nil,
+        isAway: Bool? = nil,
+        pausedApps: Int? = nil
     ) {
         self.minute = minute
         self.thermal = thermal
@@ -29,6 +35,9 @@ public struct HistoryPoint: Sendable, Codable, Identifiable {
         self.diskAvailableBytes = diskAvailableBytes
         self.worstGroupName = worstGroupName
         self.worstGroupCPU = worstGroupCPU
+        self.temperatureCelsius = temperatureCelsius
+        self.isAway = isAway
+        self.pausedApps = pausedApps
     }
 
     public static func minute(of date: Date) -> Date {
@@ -38,7 +47,8 @@ public struct HistoryPoint: Sendable, Codable, Identifiable {
 }
 
 public struct HistoryStore: Sendable, Codable {
-    public static let capacity = 1440
+    public static let capacity = 10_080
+    public static let retention: TimeInterval = 7 * 86_400
 
     public private(set) var points: [HistoryPoint]
     public private(set) var lastSavedAt: Date?
@@ -48,7 +58,7 @@ public struct HistoryStore: Sendable, Codable {
         self.lastSavedAt = lastSavedAt
     }
 
-    public mutating func record(_ sample: Sample) {
+    public mutating func record(_ sample: Sample, isAway: Bool = false, pausedApps: Int = 0) {
         let minute = HistoryPoint.minute(of: sample.date)
         let worst = sample.topGroups.first
         let point = HistoryPoint(
@@ -59,7 +69,10 @@ public struct HistoryStore: Sendable, Codable {
             swapUsedBytes: sample.swapUsedBytes,
             diskAvailableBytes: sample.diskAvailableBytes,
             worstGroupName: worst?.displayName,
-            worstGroupCPU: worst?.cpuPercent ?? 0
+            worstGroupCPU: worst?.cpuPercent ?? 0,
+            temperatureCelsius: sample.temperatureCelsius,
+            isAway: isAway,
+            pausedApps: pausedApps
         )
         if let index = points.lastIndex(where: { $0.minute == minute }) {
             points[index] = point
@@ -69,10 +82,16 @@ public struct HistoryStore: Sendable, Codable {
         if points.count > Self.capacity {
             points.removeFirst(points.count - Self.capacity)
         }
-        trim(olderThan: sample.date.addingTimeInterval(-86_400))
+        trim(olderThan: sample.date.addingTimeInterval(-Self.retention))
     }
 
     public mutating func trim(olderThan cutoff: Date) {
+        guard let first = points.first else {
+            return
+        }
+        guard first.minute < cutoff else {
+            return
+        }
         points.removeAll { $0.minute < cutoff }
     }
 
