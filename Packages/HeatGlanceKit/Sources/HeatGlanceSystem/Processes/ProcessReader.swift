@@ -109,7 +109,9 @@ public actor ProcessReader {
         }
 
         let path = executablePath(for: pid)
-        let name = String(decoding: withUnsafeBytes(of: info.pbi_comm) { $0.prefix { $0 != 0 } }, as: UTF8.self)
+        let name = withUnsafeBytes(of: info.pbi_comm) { bytes in
+            String(decoding: bytes.prefix { $0 != 0 }, as: UTF8.self)
+        }
         let resolvedName = name.isEmpty ? ((path as NSString?)?.lastPathComponent ?? "pid \(pid)") : name
 
         var usage = rusage_info_v4()
